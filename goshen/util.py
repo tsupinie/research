@@ -20,6 +20,7 @@ import re
 import sys
 from math import ceil
 from itertools import izip
+from multiprocessing import Process, Queue
 
 _interp_code = ""
 _lib_code = ""
@@ -826,6 +827,38 @@ def loadObs(file_names, times, map, dimensions, sounding_obs=None, round_time=Tr
 #   print keep_obs
 
     return keep_obs
+
+def runConcurrently(target, placeholder_vals, args=[], kwargs={}):
+    def doRun(target, pipe, tag, args, kwargs):
+        ret_val = target(*args, **kwargs)
+        pipe.put((tag, ret_val))
+        return
+
+    pipe = Queue(len(list(placeholder_vals)))
+
+    procs = {}
+    ret_vals = []
+
+    for ph_val in placeholder_vals:
+        ph_args = tuple([ ph_val if item == "__placeholder__" else item for item in args ])
+        ph_kwargs = dict([ (key, ph_val) if val == "__placeholder__" else (key, val) for key, val in kwargs.iteritems() ])
+
+        proc = Process(target=doRun, name=str(ph_val), args=(target, pipe, ph_val, ph_args, ph_kwargs))
+        proc.start()
+        procs[ph_val] = proc
+
+    while len(procs) > 0:
+        pipe_out = pipe.get()
+        tag, ret_val = pipe_out
+
+        ret_vals.append(pipe_out)
+        del procs[tag]
+
+    ret_vals = zip(*sorted(ret_vals, key=lambda x: x[0]))[1]
+    if type(ret_vals[0]) in [ list, tuple ]:
+        return zip(*ret_vals)
+    else:
+        return ret_vals
 
 def probMatchMean(ens, grid_dims=2):
     def PMM(ens, ens_mean):

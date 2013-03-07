@@ -1,5 +1,4 @@
 
-from multiprocessing import Process, Queue
 from datetime import datetime, timedelta
 import cPickle
 
@@ -12,6 +11,7 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from matplotlib.ticker import FixedFormatter, FixedLocator
 from matplotlib.colors import LinearSegmentedColormap
 
+from util import runConcurrently
 from arpsmodelobs import ARPSModelObsFile
 from radarobsfile import RadarObsFile
 from grid import goshen_3km_grid
@@ -111,49 +111,24 @@ def ETS(forecast, observation, threshold, good_markers):
 
     return ets, confusion
 
-def doETS(radar, model_path, obs_path, t_ens, base_time, refl_threshold, vel_threshold, grid, pipe):
+def doETS(radar, model_path, obs_path, t_ens, base_time, refl_threshold, vel_threshold, grid):
     try:
         model_obs = ARPSModelObsFile("%s/%san%06d" % (model_path, radar, t_ens))
     except AssertionError:
         model_obs = ARPSModelObsFile("%s/%san%06d" % (model_path, radar, t_ens), mpi_config=(2, 12))
     except IOError:
-        pipe.put((t_ens, np.nan, np.nan), block=False)
-        return
+        return np.nan, np.nan
 
     radar_obs = RadarObsFile("%s/%s.%s" % (obs_path, radar, (base_time + timedelta(seconds=t_ens)).strftime("%Y%m%d.%H%M%S")))
-    obs_refl = np.transpose(radar_obs.reflectivity, [2, 0, 1])
-    obs_vel = np.transpose(radar_obs.radial_velocity, [2, 0, 1])
     good_markers_refl = (model_obs['vr'] > -90)
-    good_markers_vel = (model_obs['Z'] > 15) & (obs_refl > 15)# & ((model_obs['Z'] > 15) | (obs_refl > 15))
+    good_markers_vel = (model_obs['Z'] > 15) & (radar_obs['Z'] > 15)# & ((model_obs['Z'] > 15) | (obs_refl > 15))
 
-    ets_refl, confusion_refl = ETS(model_obs['Z'], obs_refl, refl_threshold, good_markers_refl)
-    ets_vel, confusion_vel = ETS(np.abs(model_obs['vr']), np.abs(obs_vel), vel_threshold, good_markers_vel)
-
-#   print np.isnan(confusion_refl).sum()
-
-#   if t_ens == 14400 and radar == "KCYS":
-#       xs, ys = grid.getXY()
-#       for tilt in range(model_obs['Z'].shape[0]):
-#           plotConfusion(confusion_refl[tilt], grid, r"Confusion for $Z$ > %02d dBZ" % refl_threshold, "confusion_tilt%02d_%02ddBZ.png" % (tilt, refl_threshold))
-#           plotConfusion(confusion_vel[tilt], grid, r"Confusion for |$v_r$| > %02d m s$^{-1}$" % vel_threshold, "confusion_tilt%02d_%02dms.png" % (tilt, vel_threshold))
-#
-#           pylab.figure()
-#           pylab.pcolormesh(xs, ys, np.where(good_markers_vel[tilt], np.abs(model_obs['vr'][tilt]), np.nan), cmap=matplotlib.cm.get_cmap('winter'), vmin=0, vmax=40)
-#           pylab.colorbar()
-#           pylab.savefig("vr_model_tilt_%02d.png" % tilt)
-#           pylab.close()
-#
-#           pylab.figure()
-#           pylab.pcolormesh(xs, ys, np.where(good_markers_vel[tilt], np.abs(obs_vel[tilt]), np.nan), cmap=matplotlib.cm.get_cmap('winter'), vmin=0, vmax=40)
-#           pylab.colorbar()
-#           pylab.savefig("vr_obs_tilt_%02d.png" % tilt)
-#           pylab.close()
-
-    pipe.put((t_ens, ets_refl, ets_vel), block=False)
-    return
+    ets_refl, confusion_refl = ETS(model_obs['Z'], radar_obs['Z'], refl_threshold, good_markers_refl)
+    ets_vel, confusion_vel = ETS(np.abs(model_obs['vr']), np.abs(radar_obs['vr']), vel_threshold, good_markers_vel)
+    return ets_refl, ets_vel
 
 def main():
-    model_paths = [ "/caps1/tsupinie/3km-fixed-radar/", "/caps2/tsupinie/3km-control/", "/caps2/tsupinie/3km-n0r=8e5/", "/caps2/tsupinie/3km-7dBZ,5ms/" ]
+    model_paths = [ "/caps1/tsupinie/3km-fixed-radar/", "/caps2/tsupinie/3km-control/", "/caps2/tsupinie/3km-n0r=8e5/", "/caps2/tsupinie/3km-7dBZ,5ms/", "/caps1/tsupinie/3kmf-r0h=12km/", "/caps2/tsupinie/3kmf-pr0h=16km/", "/caps2/tsupinie/3kmf-r0h=18km/" ]
     obs_path = "/data6/tsupinie/goshen/qc/3km/"
     t_ens_start = 14400
     t_ens_stop = 18000
@@ -168,33 +143,16 @@ def main():
 
     all_ets_refl = {}
     all_ets_vel = {}
+
     for model_path in model_paths:
         exp_key = model_path.split("/")[-2]
         all_ets_refl[exp_key] = {}
         all_ets_vel[exp_key] = {}
         for radar in [ 'KCYS', 'KFTG', 'KRIW' ]:
-            procs = []
-            ets = []
-            pipe = Queue(len(range(t_ens_start, t_ens_stop + t_ens_step, t_ens_step)))
-            for t_ens in xrange(t_ens_start, t_ens_stop + t_ens_step, t_ens_step):
-                proc = Process(target=doETS, name="%s at %06d" % (radar, t_ens), args=(radar, model_path, obs_path, t_ens, base_time, refl_threshold, vel_threshold, grid, pipe))
-                proc.start()
-                procs.append(proc)
+            ets_refl, ets_vel = runConcurrently(doETS, xrange(t_ens_start, t_ens_stop + t_ens_step, t_ens_step), args=(radar, model_path, obs_path, "__placeholder__", base_time, refl_threshold, vel_threshold, grid))
 
-            proc_names = [ p.name for p in procs ]         
-
-            while len(procs) > 0:
-                ets_time = pipe.get()
-                time, ets_refl, ets_vel = ets_time
-
-                proc_idx = proc_names.index("%s at %06d" % (radar, time))
-                procs.pop(proc_idx)
-                proc_names.pop(proc_idx)
-
-                ets.append(ets_time)
-
-            all_ets_refl[exp_key][radar] = zip(*sorted(ets, key=lambda x: x[0]))[1]
-            all_ets_vel[exp_key][radar] = zip(*sorted(ets, key=lambda x: x[0]))[2]
+            all_ets_refl[exp_key][radar] = ets_refl
+            all_ets_vel[exp_key][radar] = ets_vel
 
     cPickle.dump(all_ets_refl, open("all_ets_new_%02ddBZ.pkl" % refl_threshold, 'w'), -1)
     cPickle.dump(all_ets_vel, open("all_ets_new_%02dms.pkl" % vel_threshold, 'w'), -1)
