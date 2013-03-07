@@ -27,7 +27,6 @@ class RadarObsFile(BinFile):
 
         self._timestamp = datetime(1970, 1, 1, 0, 0, 0) + timedelta(seconds=timestamp)
 
-#       print year, month, day, hour, minute, second
         self._read('i') # previous block size? ... 28
         self._read('i') # block size, I think ... 12
 
@@ -40,8 +39,6 @@ class RadarObsFile(BinFile):
 
         self._radar_name = self._read('10s')
 
-#       print self._n_tilts, self._n_gridx, self._n_gridy, self._radar_name
-
         self._read('i') # previous block size? ... 10
         self._read('i') # block_size, I think ... 20
 
@@ -51,8 +48,6 @@ class RadarObsFile(BinFile):
         radar_y = self._read('f')
         self._radar_alt = self._read('f')
 
-#       print self._radar_lat, self._radar_lon, radar_x, radar_y, self._radar_alt
-
         self._read('i') # previous block size? ... 20
         self._read('i') # bock size, i think ... 12
 
@@ -61,8 +56,6 @@ class RadarObsFile(BinFile):
         range_max = self._read('f')
 
         self._read('i')
-
-#       print d_azimuth, range_min, range_max
         return
 
     def _readData(self):
@@ -72,26 +65,33 @@ class RadarObsFile(BinFile):
         self._read('i')
         self._read('i')
 
-        self.heights = np.transpose(self._readGrid('f', (self._n_gridx, self._n_gridy, self._n_tilts)), (1, 0, 2))
-#       heights = np.memmap(self._bin_file, dtype=np.float32, mode='r', shape=(self._n_gridx, self._n_gridy, self._n_tilts), order='F')
+        self.heights = np.transpose(self._readGrid('f', (self._n_gridx, self._n_gridy, self._n_tilts)), (2, 1, 0))
 
         self._read('i')
         self._read('i')
 
-        self.range = np.transpose(self._readGrid('f', (self._n_gridx, self._n_gridy, self._n_tilts)), (1, 0, 2))
+        self.range = np.transpose(self._readGrid('f', (self._n_gridx, self._n_gridy, self._n_tilts)), (2, 1, 0))
+
+        self._read('i')
+        self._variables = {}
+
+        self._read('i')
+
+        self._variables['vr'] = np.transpose(self._readGrid('f', (self._n_gridx, self._n_gridy, self._n_tilts)), (2, 1, 0))
 
         self._read('i')
         self._read('i')
 
-        self.radial_velocity = np.transpose(self._readGrid('f', (self._n_gridx, self._n_gridy, self._n_tilts)), (1, 0, 2))
-
-        self._read('i')
-        self._read('i')
-
-        self.reflectivity = np.transpose(self._readGrid('f', (self._n_gridx, self._n_gridy, self._n_tilts)), (1, 0, 2))
+        self._variables['Z'] = np.transpose(self._readGrid('f', (self._n_gridx, self._n_gridy, self._n_tilts)), (2, 1, 0))
 
         self._read('i')
         return
+
+    def __getitem__(self, key):
+        try:
+            return self._variables[key]
+        except KeyError:
+            raise ValueError("Variable '%s' not found in file." % key)
 
 if __name__ == "__main__":
 #   rof = RadarObsFile("qc/manual/1km/KCYS.20090605.215309")

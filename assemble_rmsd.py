@@ -50,14 +50,17 @@ styles_1km_goshen = {
 exp_names_1km_goshen = { "1km-control-mod-05XP":"MM + MWR05XP", "1km-control-no-mm":"No MM", "1km-control-mm":"MM" }
 
 radar_id_3km_goshen = [ "KCYS", "KFTG", "KRIW" ]
-experiments_3km_goshen = [ "3km-control", "3kmf-r0h=12km", "3km-control-adapt=1.00", "3km-7dBZ,5ms", "3km-control-r0h=12km", "3km-pr0h=16km", "3km-n0r=8e5", "3km-fixed-radar" ]
+experiments_3km_goshen = [ "3km-control", "3km-control-adapt=1.00", "3km-7dBZ,5ms", "3kmf-r0h=12km", "3kmf-r0h=18km", "3kmf-pr0h=16km", "3km-n0r=8e5", "3km-fixed-radar" ]
 colors_3km_goshen = {
-    "3km-control:KCYS":'r',
-    "3km-control:KFTG":'r',
-    "3km-control:KRIW":'r',
+    "3km-control:KCYS":'k',
+    "3km-control:KFTG":'k',
+    "3km-control:KRIW":'k',
     "3kmf-r0h=12km:KCYS":'g',
     "3kmf-r0h=12km:KFTG":'g',
     "3kmf-r0h=12km:KRIW":'g',
+    "3kmf-r0h=18km:KCYS":'r',
+    "3kmf-r0h=18km:KFTG":'r',
+    "3kmf-r0h=18km:KRIW":'r',
     "3km-control-adapt=1.00:KCYS":'b',
     "3km-control-adapt=1.00:KFTG":'b',
     "3km-control-adapt=1.00:KRIW":'b',
@@ -67,9 +70,9 @@ colors_3km_goshen = {
     "3km-control-r0h=12km:KCYS":'c',
     "3km-control-r0h=12km:KFTG":'c',
     "3km-control-r0h=12km:KRIW":'c',
-    "3km-pr0h=16km:KCYS":'#999999',
-    "3km-pr0h=16km:KFTG":'#999999',
-    "3km-pr0h=16km:KRIW":'#999999',
+    "3kmf-pr0h=16km:KCYS":'#999999',
+    "3kmf-pr0h=16km:KFTG":'#999999',
+    "3kmf-pr0h=16km:KRIW":'#999999',
     "3km-n0r=8e5:KCYS":'#ff6600',
     "3km-n0r=8e5:KFTG":'#ff6600',
     "3km-n0r=8e5:KRIW":'#ff6600',
@@ -94,7 +97,8 @@ exp_names_3km_goshen = {
     "3km-control-adapt=1.00":r"RTPS $\alpha$ = 1.00", 
     "3km-control-r0h=12km":r"$r_{0h}$ = 12 km",
     "3kmf-r0h=12km":r"$r_{0h}$ = 12 km, Correct Radar",
-    "3km-pr0h=16km":r"$r_{0h,i}$ = 16 km",
+    "3kmf-r0h=18km":r"$r_{0h}$ = 18 km, Correct Radar",
+    "3kmf-pr0h=16km":r"$r_{0h,i}$ = 16 km",
     "3km-7dBZ,5ms":r"$\sigma_Z$ = 7 dBZ, $\sigma_{v_r}$ = 5 m s$^{-1}$",
     "3km-n0r=8e5":r"$N_{0r}$ = 8 $\times$ 10$^{-4}$",
     "3km-alladapt":"RTPS only",
