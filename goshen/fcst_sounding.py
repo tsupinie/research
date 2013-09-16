@@ -1,5 +1,6 @@
 
-from util import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs, loadObs, probMatchMean, drawPolitical
+from legacy import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs, drawPolitical
+from util import loadObs, probMatchMean
 from computeQuantities import theta2Temperature, qv2Dewpoint, computeReflectivity
 from plot_sounding import plotSkewTBackground, plotProfile, plotWinds
 

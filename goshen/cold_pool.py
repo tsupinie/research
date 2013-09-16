@@ -1,5 +1,5 @@
 
-from util import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs, loadObs, interpolate, decompressVariable, drawPolitical, probMatchMean
+from util import loadObs, interpolate, decompressVariable, drawPolitical, probMatchMean
 from grid import goshen_1km_grid
 from temporal import goshen_1km_temporal
 from dataload import loadEnsemble

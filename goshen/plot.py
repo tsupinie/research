@@ -11,7 +11,8 @@ import Nio as nio
 import numpy as np
 
 from computeQuantities import computeReflectivity
-from util import decompressVariable, drawPolitical, goshen_1km_proj, goshen_1km_gs, goshen_3km_proj, goshen_3km_gs, setupMapProjection
+from legacy import drawPolitical, goshen_1km_proj, goshen_1km_gs, goshen_3km_proj, goshen_3km_gs, setupMapProjection
+from util import decompressVariable
 from color_tables import NWSRef
 
 import pylab

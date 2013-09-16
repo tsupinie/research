@@ -1,5 +1,5 @@
 
-from util import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs, drawPolitical
+from legacy import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs, drawPolitical
 from computeQuantities import computeVorticity
 
 import matplotlib

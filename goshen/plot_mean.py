@@ -1,5 +1,5 @@
 
-from util import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs, drawPolitical, flux_boxes
+from legacy import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs, drawPolitical, flux_boxes
 from computeQuantities import computeReflectivity
 
 import numpy as np

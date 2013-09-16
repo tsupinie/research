@@ -1,5 +1,6 @@
 
-from util import loadAndInterpolateEnsemble, setupMapProjection, decompressVariable, loadObs, interpolate, goshen_1km_proj, goshen_1km_gs, _makeZCoordsAGL
+from legacy import loadAndInterpolateEnsemble, setupMapProjection, interpolate, goshen_1km_proj, goshen_1km_gs, _makeZCoordsAGL
+from util import decompressVariable, loadObs
 
 import pylab
 from mpl_toolkits.basemap import Basemap

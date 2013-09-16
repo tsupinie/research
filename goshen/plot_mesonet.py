@@ -7,7 +7,8 @@ from itertools import izip
 import numpy as np
 import Nio as nio
 
-from util import setupMapProjection, goshen_1km_proj, goshen_1km_gs, loadObs, drawPolitical
+from legacy import setupMapProjection, goshen_1km_proj, goshen_1km_gs, drawPolitical
+from util import loadObs
 
 import pylab
 from mpl_toolkits.basemap import Basemap

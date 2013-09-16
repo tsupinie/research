@@ -1,5 +1,6 @@
 
-from util import loadAndInterpolateEnsemble, setupMapProjection, decompressVariable, goshen_1km_proj, goshen_1km_gs, probMatchMean, drawPolitical, flux_boxes
+from legacy import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs, drawPolitical, flux_boxes
+from util import probMatchMean, decompressVariable
 
 import matplotlib
 matplotlib.use('agg')

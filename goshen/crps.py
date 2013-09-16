@@ -1,5 +1,6 @@
 
-from util import setupMapProjection, decompressVariable, loadObs, goshen_1km_proj, goshen_1km_gs, inflow_stations
+from legacy import setupMapProjection, goshen_1km_proj, goshen_1km_gs, inflow_stations
+from util import loadObs, decompressVariable
 from dataload import loadEnsemble
 
 import numpy as np

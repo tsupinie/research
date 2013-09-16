@@ -10,7 +10,8 @@ import matplotlib.transforms as transforms
 
 from mpl_toolkits.basemap import Basemap
 
-from util import loadObs, setupMapProjection, goshen_1km_proj, goshen_1km_gs
+from legacy import setupMapProjection, goshen_1km_proj, goshen_1km_gs
+from util import loadObs
 
 def main():
     exp_names = [ "no-mm", "mm", "mod-05XP" ]

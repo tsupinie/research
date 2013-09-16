@@ -1,5 +1,6 @@
 
-from util import loadAndInterpolateEnsemble, loadObs, goshen_1km_proj, goshen_1km_gs, setupMapProjection, drawPolitical, inflow_stations
+from legacy import loadAndInterpolateEnsemble, goshen_1km_proj, goshen_1km_gs, setupMapProjection, drawPolitical, inflow_stations
+from util import loadObs
 
 import matplotlib
 matplotlib.use('agg')

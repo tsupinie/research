@@ -1,5 +1,5 @@
 
-from util import setupMapProjection, goshen_1km_proj, goshen_1km_gs, goshen_3km_proj, goshen_3km_gs, drawPolitical
+from legacy import setupMapProjection, goshen_1km_proj, goshen_1km_gs, goshen_3km_proj, goshen_3km_gs, drawPolitical
 
 import numpy as np
 

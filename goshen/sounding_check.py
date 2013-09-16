@@ -1,5 +1,6 @@
 
-from util import loadObs, loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs
+from legacy import loadAndInterpolateEnsemble, setupMapProjection, goshen_1km_proj, goshen_1km_gs
+from util import loadObs
 from computeQuantities import theta2Temperature, qv2Dewpoint
 from plot_sounding import plotSounding
 

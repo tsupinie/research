@@ -1,5 +1,5 @@
 
-from util import goshen_1km_proj, goshen_1km_gs, goshen_3km_proj, goshen_3km_gs, setupMapProjection, drawPolitical
+from legacy import goshen_1km_proj, goshen_1km_gs, goshen_3km_proj, goshen_3km_gs, setupMapProjection, drawPolitical
 
 import cPickle
 

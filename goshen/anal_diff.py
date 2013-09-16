@@ -1,5 +1,5 @@
 
-from util import loadAndInterpolateEnsemble, setupMapProjection, decompressVariable, goshen_1km_proj, goshen_1km_gs
+from legacy import loadAndInterpolateEnsemble, setupMapProjection, decompressVariable, goshen_1km_proj, goshen_1km_gs
 from computeQuantities import computeReflectivity
 
 import pylab

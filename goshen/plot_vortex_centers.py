@@ -1,5 +1,5 @@
 
-from util import goshen_1km_proj, goshen_1km_gs, setupMapProjection
+from legacy import goshen_1km_proj, goshen_1km_gs, setupMapProjection
 
 import numpy as np
 

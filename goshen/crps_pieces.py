@@ -10,7 +10,8 @@ matplotlib.use('agg')
 import pylab
 from mpl_toolkits.basemap import Basemap
 
-from util import loadObs, setupMapProjection, goshen_1km_proj, goshen_1km_gs, inflow_stations
+from legacy import setupMapProjection, goshen_1km_proj, goshen_1km_gs, inflow_stations
+from util import loadObs
 
 def partitionObs(obs, base_epoch):
     times = sorted(inflow_stations.keys())
