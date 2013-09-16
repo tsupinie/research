@@ -258,39 +258,7 @@ def interpolate(data, axes, points, wrap=False):
 def coneHeight(distance, elev_angle, z_base):
     earth_radius = 6371000.
     eff_factor = 4. / 3.
-    elev = 3.14592654 / 180. * elev_angle # should be np.pi
-    return (np.cos(elev) / np.cos(elev + distance / (earth_radius * eff_factor)) - 1) * earth_radius * eff_factor + z_base;
-
-def computeBounds(z_coords, y_coords, x_coords, points, coords='hght'):
-    if points is None:
-        lower_bound, upper_bound = 0, z_coords.shape[0]
-    else:
-        if ('x' in points or 'y' in points) and 'z' in points:
-            if coords == 'hght':
-                lower_bound, dummy = _findZBounds(z_coords, points['z'].min(), coords=='pres')
-                dummy, upper_bound = _findZBounds(z_coords, points['z'].max(), coords=='pres')
-            elif coords == 'pres':
-                lower_bound, dummy = _findZBounds(z_coords, points['z'].max(), coords=='pres')
-                dummy, upper_bound = _findZBounds(z_coords, points['z'].min(), coords=='pres')
-        elif 'x' in points or 'y' in points:
-            lower_bound, upper_bound = 0, z_coords.shape[0]
-        elif 'z' in points:
-            lower_bound, upper_bound = _findZBounds(z_coords, points['z'], coords=='pres')
-        else:
-            max_dist = 0
-
-            for idx in [0, -1]:
-                for jdy in [0, -1]:
-                    max_dist = max(max_dist, np.hypot(points['x_base'] - x_coords[idx], points['y_base'] - y_coords[jdy]))
-
-            lower_bound, dummy = _findZBounds(z_coords, points['z_base'], coords == 'pres')
-            dummy, upper_bound = _findZBounds(z_coords, coneHeight(max_dist, points['elev_angle'], points['z_base']), coords=='pres')
-    return lower_bound, upper_bound
-
-def coneHeight(distance, elev_angle, z_base):
-    earth_radius = 6371000.
-    eff_factor = 4. / 3.
-    elev = 3.14592654 / 180. * elev_angle # should be np.pi
+    elev = np.pi / 180. * elev_angle
     return (np.cos(elev) / np.cos(elev + distance / (earth_radius * eff_factor)) - 1) * earth_radius * eff_factor + z_base;
 
 def computeBounds(z_coords, y_coords, x_coords, points, coords='hght'):
