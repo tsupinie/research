@@ -138,6 +138,6 @@ def editNamelistFile(file_name_src, file_name_dest, **kwargs):
 
 if __name__ == "__main__":
 #   editNamelistFile("arps.input", "arps.test.input")
-    editNamelistFile("/home/tsupinie/arps5.3_enkf/input/arps.input", "arps.1km.input.values", __file_name_values__="arps.1km.input")
+    editNamelistFile("/home/tsupinie/arps5.3/input/arps.input", "ext2arps_new.3km.input", __file_name_values__="ext2arps.3km.input")
 #   editNamelistFile("arpsenkf.template.input", "arpsenkf.input", __file_name_values__="arpsenkf.old.input")
 #   editNamelistFile("arps.input", "arps.test.input", inifile='/brashear/supinie/cov_infl/30May2004/enf001.hdf000300')

@@ -12,6 +12,7 @@ import numpy as np
 
 from computeQuantities import computeReflectivity
 from util import decompressVariable, drawPolitical, goshen_1km_proj, goshen_1km_gs, goshen_3km_proj, goshen_3km_gs, setupMapProjection
+from color_tables import NWSRef
 
 import pylab
 from mpl_toolkits.basemap import Basemap
@@ -46,13 +47,13 @@ def load_topo(file_name, grid_size, bounds, trim_bounds):
 
 def plot_map(radar_data, grid_spacing, title, file_name, color_bar='refl', topo=None, aux_field=None, vectors=None, obs=None):
 #   bounds = (slice(80, 160), slice(90, 170))
-#   bounds = (slice(None), slice(None))
-    bounds = (slice(242, 327), slice(199, 284))
+    bounds = (slice(None), slice(None))
+#   bounds = (slice(242, 327), slice(199, 284))
     pylab.figure()
     pylab.subplots_adjust(left=0.02, right=0.98, top=0.90, bottom=0.02)
     nx, ny = radar_data[bounds[::-1]].shape
 
-    proj = setupMapProjection(goshen_3km_proj, goshen_3km_gs, bounds=bounds)
+    proj = setupMapProjection(goshen_1km_proj, goshen_1km_gs, bounds=bounds)
     map = Basemap(**proj)
 
     radar_x, radar_y = map([-104.299004], [41.561497])
@@ -66,8 +67,8 @@ def plot_map(radar_data, grid_spacing, title, file_name, color_bar='refl', topo=
         map.contourf(topo_x, topo_y, topo_data, cmap=pylab.get_cmap('gray'))
 
     if color_bar == 'refl':
-        levels = range(10, 80, 10)
-        color_map = pylab.get_cmap('jet')
+        levels = range(10, 85, 5)
+        color_map = NWSRef #pylab.get_cmap('jet')
     elif color_bar == 'radv':
         levels = range(-35, 40, 5)
         color_map = pylab.get_cmap('RdBu')
@@ -86,7 +87,7 @@ def plot_map(radar_data, grid_spacing, title, file_name, color_bar='refl', topo=
     if aux_field is not None:
         aux_levels, aux_data = aux_field
         CS = map.contour(x, y, aux_data[bounds[::-1]], levels=aux_levels, colors='k', lw=0.75)
-        pylab.clabel(CS, fmt='%.0f', inline_spacing=1, fontsize="12px")
+#       pylab.clabel(CS, fmt='%.0f', inline_spacing=1, fontsize="12px")
 
     drawPolitical(map, scale_len=25)
 
@@ -206,8 +207,8 @@ def do_simulated_plot(file_name, valid_time, sec_string, obs=None, date_tag=True
 
     bounds = (slice(100, 130), slice(100, 130))
 
-    plot_map(vars['pt'], 3000, ptprt_title, ptprt_img_file_name, color_bar='pt', vectors=(vars['u'], vars['v']), obs=obs)
-    plot_map(reflectivity, 3000, refl_title, refl_img_file_name, color_bar='refl', aux_field=(w_levels, vars['w']))
+    plot_map(vars['pt'], 1000, ptprt_title, ptprt_img_file_name, color_bar='pt', vectors=(vars['u'], vars['v']), obs=obs)
+    plot_map(reflectivity, 1000, refl_title, refl_img_file_name, color_bar='refl', aux_field=(w_levels, vars['w']))
     return
 
 def main():
@@ -217,7 +218,7 @@ def main():
     ensemble_plot = False
     plot_obs = False
 #   files = sorted(glob.glob("hdf/%s/1km/goshen.hdf%s2d*" % (radar_id, parameter)))
-    files = sorted(glob.glob("/caps1/tsupinie/enf011.hdf0*"))
+    files = sorted(glob.glob("/caps2/tsupinie/1kmf-zupdtpt/ena011.hdf*"))
 #   files = [ "/data6/tsupinie/adapt=0.80,noise=0.75/enmean.hdf003600" ]#, "/data6/tsupinie/relax=0.50,noise=0.75/enmean.hdf003600" ]
 
 #   topo, topo_lats, topo_lons = load_topo("e10g", (6000, 10800), ((0., 50.), (-180., -90.)), ((36., 46.), (-109., -99.)))

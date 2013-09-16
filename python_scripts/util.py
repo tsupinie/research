@@ -9,6 +9,7 @@ import numpy as np
 import scipy.weave as weave
 
 from mpl_toolkits.basemap import Basemap
+from matplotlib import transforms
 
 import Nio as nio
 
@@ -21,6 +22,7 @@ import sys
 from math import ceil
 from itertools import izip
 from multiprocessing import Process, Queue
+import string
 
 _interp_code = ""
 _lib_code = ""
@@ -710,7 +712,12 @@ def drawPolitical(map, scale_len=0):
 
 def isolateObsTimes(obs, times, round=True):
     epoch = datetime(1970, 1, 1, 0, 0, 0)
-    keep_obs = np.empty((0,), dtype=obs.dtype)
+
+    dtype = sorted(obs.dtype.fields.items(), key=lambda (f, (d, o)): o)
+    new_dtype = [ (f, d) for (f, (d, o)) in dtype ]
+    new_dtype.append(('nom_time', np.dtype('float64')))
+
+    keep_obs = [ ] #np.empty((0,), dtype=new_dtype)
 
     too_early = 0
     too_late = 0
@@ -718,16 +725,14 @@ def isolateObsTimes(obs, times, round=True):
     for idx in xrange(obs.shape[0]):
         ob = obs[idx]
         ob_time = epoch + timedelta(seconds=ob['time'])
+
         if ob_time in times:
-            keep_obs.resize(keep_obs.shape[0] + 1)
-            keep_obs[-1] = tuple(ob)
+            keep_obs.append(tuple(ob) + (ob['time'],))
         elif ob_time >= min(times) and ob_time <= max(times): # and ob['latitude'] not in keep_obs['latitude'] and ob['longitude'] not in keep_obs['longitude']:
             if round:
                 round_time = np.round(ob['time'] / 300) * 300
-                ob['time'] = round_time
+                keep_obs.append(tuple(ob) + (round_time,))
 
-            keep_obs.resize(keep_obs.shape[0] + 1)
-            keep_obs[-1] = tuple(ob)
         elif ob_time < min(times):
             too_early += 1
         elif ob_time > max(times):
@@ -737,7 +742,7 @@ def isolateObsTimes(obs, times, round=True):
 #   print "# obs too late:", too_late
 #   print keep_obs.shape
 
-    return keep_obs
+    return np.array(keep_obs, dtype=new_dtype)
 
 def thinObs(obs, map, width, height):
     horiz_distance_thresh = 1000
@@ -758,7 +763,7 @@ def thinObs(obs, map, width, height):
 
             horiz_dists = np.hypot(keep_xs - x, keep_ys - y)
             pres_dists = np.abs(keep_obs['pres'] - ob['pres'])
-            time_dists = np.abs(keep_obs['time'] - ob['time'])
+            time_dists = np.abs(keep_obs['nom_time'] - ob['nom_time'])
 
             if np.where((horiz_dists < horiz_distance_thresh) & (pres_dists < pressure_thresh) & (time_dists < time_thresh))[0].shape[0] == 0:
                 keep_obs.resize(keep_obs.shape[0] + 1)
@@ -814,12 +819,8 @@ def loadObs(file_names, times, map, dimensions, sounding_obs=None, round_time=Tr
 
     all_obs = np.concatenate(tuple(obs)).astype(obs[0].dtype)
 
-#   print all_obs.shape
-
-    all_obs = all_obs[np.where(all_obs['id'] != "101A")]
-
     keep_obs = isolateObsTimes(all_obs, times, round=round_time)
-    keep_obs.sort(order='time')
+    keep_obs.sort(order='nom_time')
 
     keep_obs = thinObs(keep_obs, map, *dimensions)
 
@@ -828,7 +829,27 @@ def loadObs(file_names, times, map, dimensions, sounding_obs=None, round_time=Tr
 
     return keep_obs
 
-def runConcurrently(target, placeholder_vals, args=[], kwargs={}):
+def runConcurrently(target, placeholder_vals, args=[], kwargs={}, max_concurrent=-1, zip_result=False):
+    """
+    runConcurrently()
+    Purpose:    Runs several instances of a function at the same time and returns all their outputs as a list.
+    Parameters: target [type=function]
+                    Function to run.  For this version of the function, it must return something.
+                placeholder_vals [type=list,tuple]
+                    Values of a placeholder parameter to run the function on.
+                args [optional, type=list]
+                    Arguments to pass to the target function.  One or more may have the special value "__placeholder__", which
+                    will be replaced with a value from placeholder_vals for each instance of the function.
+                kwargs [optional, type=dict]
+                    Keyword arguments to pass to the target function.  One or more may have the special value "__placeholder__",
+                    which will be replaced with a value from placeholder_vals for each instance of the function.
+                max_concurrent [optional, type=int]
+                    Maximum number of function instances to run at the same time.  The default is to run an instance for each 
+                    value in placeholder_vals at the same time.
+    Returns:    A list of the return values from each instance of the function, sorted by the corresponding placeholder value.
+    """
+
+    # Dummy function; sets up the pipe for parallelization so the user doesn't have to.
     def doRun(target, pipe, tag, args, kwargs):
         ret_val = target(*args, **kwargs)
         pipe.put((tag, ret_val))
@@ -836,26 +857,47 @@ def runConcurrently(target, placeholder_vals, args=[], kwargs={}):
 
     pipe = Queue(len(list(placeholder_vals)))
 
-    procs = {}
+    ph_vals = copy.copy(placeholder_vals)
+
     ret_vals = []
 
-    for ph_val in placeholder_vals:
-        ph_args = tuple([ ph_val if item == "__placeholder__" else item for item in args ])
-        ph_kwargs = dict([ (key, ph_val) if val == "__placeholder__" else (key, val) for key, val in kwargs.iteritems() ])
+    ph_done = 0
 
-        proc = Process(target=doRun, name=str(ph_val), args=(target, pipe, ph_val, ph_args, ph_kwargs))
-        proc.start()
-        procs[ph_val] = proc
+    while len(ph_vals) > 0:
+        # We're going to end up popping off chunks of the ph_vals list, so loop until there's nothing left in that list.
 
-    while len(procs) > 0:
-        pipe_out = pipe.get()
-        tag, ret_val = pipe_out
+        # Do the pop.
+        if max_concurrent == -1: max_concurrent = len(ph_vals)
+        ph_chunk = [ ph_vals.pop(0) for idx in range(min(max_concurrent, len(ph_vals))) ]
 
-        ret_vals.append(pipe_out)
-        del procs[tag]
+        procs = {}
+        for ph_idx, ph_val in enumerate(ph_chunk):
+            tag = ph_idx + ph_done
+            # Run an instance of the function for every value in this chunk.
 
+            # Replace all the instances of "__placeholder__" in the arguments.
+            ph_args = tuple([ ph_val if item == "__placeholder__" else item for item in args ])
+            ph_kwargs = dict([ (key, ph_val) if val == "__placeholder__" else (key, val) for key, val in kwargs.iteritems() ])
+
+            # Instantiate the process and start it.  This calls the dummy function doRun above, which calls the actual target function.
+            proc = Process(target=doRun, name=str(ph_val), args=(target, pipe, tag, ph_args, ph_kwargs))
+            proc.start()
+            procs[tag] = proc
+
+        while len(procs) > 0:
+            # Wait for the processes to finish, deleting it from the procs list whenever it's finished.  Loops until all the 
+            #   processes have finished.
+            pipe_out = pipe.get()
+            tag, ret_val = pipe_out
+
+            ret_vals.append(pipe_out)
+            del procs[tag]
+
+        ph_done += len(ph_chunk)
+
+    # Sort by placeholder value, keep only the return values themselves.
     ret_vals = zip(*sorted(ret_vals, key=lambda x: x[0]))[1]
-    if type(ret_vals[0]) in [ list, tuple ]:
+    if zip_result:
         return zip(*ret_vals)
     else:
         return ret_vals
@@ -883,6 +925,72 @@ def probMatchMean(ens, grid_dims=2):
             pm_mean[wdt] = PMM(ens[:, wdt], ens_mean[wdt])
 
     return pm_mean
+
+def publicationFigure(subfigures, layout, corner='ul', colorbar=None):
+    import matplotlib
+    import pylab
+    rows, columns = layout
+
+    base_diag = np.hypot(6, 12)
+    size_x, size_y = pylab.gcf().get_size_inches()
+    fig_diag = np.hypot(size_x, size_y)
+
+    multiplier = fig_diag / base_diag
+
+    bbox = {'ec':'k', 'fc':'w', 'pad':10, 'lw':multiplier}
+    loc = {'ul':(0.0, 1.0), 'ur':(1.0, 1.0)}
+    align = {'ul':('left', 'top'), 'ur':('right', 'top')}
+    pad_signs = {'l':1, 'r':-1, 'u':-1}
+
+    matplotlib.rcdefaults()
+    for rc in ['axes.linewidth', 'xtick.major.size', 'ytick.major.size' ]:
+        matplotlib.rcParams[rc] *= multiplier
+
+#   for line in pylab.gca().xaxis.get_ticklines():
+#       line.set_linewidth(line.get_linewidth() * multiplier)
+#   for line in pylab.gca().yaxis.get_ticklines():
+#       line.set_linewidth(line.get_linewidth() * multiplier)
+
+    for idx, sf in enumerate(subfigures):
+        pylab.subplot(rows, columns, idx + 1)
+
+        n_row = idx / columns
+        n_col = idx % columns
+        sf(multiplier=multiplier, layout=(n_row + 1, n_col + 1))
+
+        offset = transforms.ScaledTranslation(pad_signs[corner[1]] * ((bbox['pad'] + bbox['lw']) / (2 * 72.)), pad_signs[corner[0]] * (bbox['pad'] + bbox['lw']) / (2 * 72.), pylab.gcf().dpi_scale_trans)
+        text_transform = pylab.gca().transAxes + offset
+        text_x, text_y = loc[corner]
+        h_align, v_align = align[corner]
+        pylab.text(text_x, text_y, "(%s)" % string.ascii_lowercase[idx], transform=text_transform, bbox=bbox, ha=h_align, va=v_align, fontsize=16 * multiplier, fontweight='bold', zorder=1000)
+
+    def onDraw(event):
+        min_label_x = np.zeros((columns,), dtype=float)
+        for idx in range(len(subfigures)):
+            ax = pylab.subplot(rows, columns, idx + 1)
+            n_col = idx % columns
+            bbox = ax.yaxis.label.get_window_extent().inverse_transformed(ax.transAxes)
+            min_label_x[n_col] = min(min_label_x[n_col], bbox.get_points()[:, 0].min())
+
+        for idx in range(len(subfigures)):
+            ax = pylab.subplot(rows, columns, idx + 1)
+            n_col = idx % columns
+            ax.yaxis.label.set_position((min_label_x[n_col], 0.5))
+
+#   pylab.gcf().canvas.mpl_connect('draw_event', onDraw)
+
+    if colorbar:
+        bar_label, format, ticks = colorbar[:3]
+        tick_labels = colorbar[-1]
+
+        cax = pylab.axes((0.90, 0.1125, 0.020, 0.825))
+        bar = pylab.colorbar(cax=cax)
+        bar.ax.text(3.5, 0.5, bar_label, rotation=90, transform=bar.ax.transAxes, size=12 * multiplier, va='center')
+        bar.set_ticks(ticks)
+        bar.set_ticklabels([ format % t for t in tick_labels])
+        bar.ax.tick_params(labelsize=12 * multiplier)
+
+    return
 
 if __name__ == "__main__":
     test_array = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))

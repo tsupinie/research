@@ -15,7 +15,7 @@ import gc
 from datetime import datetime, timedelta
 
 from computeQuantities import computeVorticity, computeReflectivity
-from util import decompressVariable, loadAndInterpolateEnsemble
+from dataload import loadEnsemble
 
 def interpolate_old(data, point, axes):
     interp_grid = data
@@ -91,6 +91,14 @@ def swath(data, threshold, nens, times, lower_p_bound):
 #   argmax_prob = np.where(max_prob < lower_p_bound, -1, argmax_prob)
     return ti_prob, argmax_prob
 
+def findProbObjects(data, data_threshold, prob_threshold):
+    from scipy.ndimage.measurements import label, find_objects
+    connectivity = np.ones((3, 3, 3), dtype=np.int32)
+
+    ens_prob = (data >= data_threshold).sum(axis=0) / float(data.shape[0])
+    labels, n_objs = label(ens_prob >= prob_threshold, structure=connectivity)
+    return find_objects(labels)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--data-dir', dest='data_dir', default=None)
@@ -119,7 +127,7 @@ def main():
         v_all = np.transpose(v_all, (1, 0, 2, 3))
     else:
 #       files = glob.glob("%s/ena???.hdf0*" % args.data_dir)
-        files = glob.glob("%s/ena???.hdf010800" % args.data_dir)
+#       files = glob.glob("%s/ena???.hdf010800" % args.data_dir)
 
         if args.parameter == 'vort':
             var_list = ['u', 'v', 'dx', 'dy']
@@ -127,9 +135,13 @@ def main():
         elif args.parameter == 'refl':
             func = computeReflectivity
             var_list = ['p', 'pt', 'qr', 'qs', 'qh']
+        elif args.parameter == 'w':
+            func = lambda **kwargs: kwargs['w']
+            var_list = [ 'w' ]
 
-        param_all, ens_members, times = loadAndInterpolateEnsemble(files, var_list, func, "%s/ena001.hdfgrdbas" % args.data_dir, { 'z':args.interp_height })
-        n_ensemble_members = len(ens_members)
+        n_ensemble_members = 40
+        times = np.arange(14400, 18300, 300)
+        param_all = loadEnsemble(args.data_dir, n_ensemble_members, times, (var_list, func), { 'z':args.interp_height }, agl=True)
 
     cutoff = np.where(times == 14400)[0]
 
@@ -137,20 +149,33 @@ def main():
         threshold = 0.0075
         lower_p_bound = 0.2
     elif args.parameter == 'refl':
-        threshold = 20.
+        threshold = 40.
         lower_p_bound = 0.1
+    elif args.parameter == 'w':
+        threshold = 5.
+        lower_p_bound = 0.1
+
+        objects = findProbObjects(param_all, threshold, 0.2)
 
     max_prob_all, argmax_prob_all = swath(param_all, threshold, n_ensemble_members, times, lower_p_bound)
 
     if cutoff < len(times):
         max_prob_da,   argmax_prob_da   = swath(param_all[:, :(cutoff + 1), :, :], threshold, n_ensemble_members, times[:(cutoff + 1)], lower_p_bound)
         max_prob_fcst, argmax_prob_fcst = swath(param_all[:, cutoff:, :, :],       threshold, n_ensemble_members, times[cutoff:],       lower_p_bound)
-    
-        cPickle.dump((max_prob_all,    max_prob_da,    max_prob_fcst),    open("max_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag),    'w'), -1)
-        cPickle.dump((argmax_prob_all, argmax_prob_da, argmax_prob_fcst), open("argmax_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag), 'w'), -1)
+ 
+        if args.parameter == 'w':
+            cPickle.dump((max_prob_all,    max_prob_da,    max_prob_fcst,   objects), open("max_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag),    'w'), -1)
+            cPickle.dump((argmax_prob_all, argmax_prob_da, argmax_prob_fcst        ), open("argmax_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag), 'w'), -1)
+        else:
+            cPickle.dump((max_prob_all,    max_prob_da,    max_prob_fcst),    open("max_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag),    'w'), -1)
+            cPickle.dump((argmax_prob_all, argmax_prob_da, argmax_prob_fcst), open("argmax_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag), 'w'), -1)
     else:
-        cPickle.dump((max_prob_all,),    open("max_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag),    'w'), -1)
-        cPickle.dump((argmax_prob_all,), open("argmax_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag), 'w'), -1)
+        if args.parameter == 'w':
+            cPickle.dump((max_prob_all, objects),    open("max_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag),    'w'), -1)
+            cPickle.dump((argmax_prob_all,),         open("argmax_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag), 'w'), -1)
+        else:
+            cPickle.dump((max_prob_all,),    open("max_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag),    'w'), -1)
+            cPickle.dump((argmax_prob_all,), open("argmax_%s_prob_%dm_%s.pkl" % (args.parameter, args.interp_height, args.tag), 'w'), -1)
 
     return
 

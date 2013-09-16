@@ -1,5 +1,6 @@
 
-from util import loadAndInterpolateEnsemble, setupMapProjection, decompressVariable, loadObs, goshen_1km_proj, goshen_1km_gs, inflow_stations
+from util import setupMapProjection, decompressVariable, loadObs, goshen_1km_proj, goshen_1km_gs, inflow_stations
+from dataload import loadEnsemble
 
 import numpy as np
 
@@ -10,7 +11,7 @@ matplotlib.use('agg')
 import pylab
 from mpl_toolkits.basemap import Basemap
 
-import cPickle, glob
+import cPickle, glob, os
 from datetime import datetime, timedelta
 
 def heaviside(x):
@@ -165,7 +166,8 @@ def main():
     times_seconds = range(14700, 18300, 300)
     times = [ base_time + timedelta(seconds=t) for t in times_seconds ]
 
-    exp_name = "mod-05XP"
+    n_ensemble_members = 40
+    exp_name = "zupdtpt"
 
     #
     # Set up the basemap grid
@@ -190,7 +192,6 @@ def main():
     print "Number of TTU Sticknet obs used:", num_ttu_obs
     print "Number of ASOS obs used:", num_asos_obs
     print "Number of sounding obs used:", num_sndg_obs
-
 
     all_times = [ datetime(1970, 1, 1, 0, 0, 0) + timedelta(seconds=t) for t in all_obs['time'] ]
 
@@ -223,7 +224,7 @@ def main():
     low_outliers = { }
 
     for time_sec, time in zip(times_seconds, times):
-        files = glob.glob("/caps1/tsupinie/1km-control-%s/ena???.hdf%06d" % (exp_name, time_sec))
+#       files = glob.glob("/caps2/tsupinie/1kmf-%s/ena???.hdf%06d" % (exp_name, time_sec))
 
         time_idxs = np.where(all_obs['time'] == (time - epoch).total_seconds())
 
@@ -232,8 +233,12 @@ def main():
         # loading the all the members timestep-by-timestep, but there's no reason you can't load them all at once.  See the function
         # definition for the meaning of all the arguments.
         #
-        ens_obs, ens_members, ens_times = loadAndInterpolateEnsemble(files, ['u', 'v', 'pt', 'p', 'qv'], getObsData, "/caps1/tsupinie/1km-control-20120712/ena001.hdfgrdbas", 
-            {'z':obs_z[time_idxs], 'y':obs_y[time_idxs], 'x':obs_x[time_idxs]}, agl=False, wrap=True, coords='pres')
+#       ens_obs, ens_members, ens_times = loadAndInterpolateEnsemble(files, ['u', 'v', 'pt', 'p', 'qv'], getObsData, "/caps2/tsupinie/1kmf-%s/ena001.hdfgrdbas" % exp_name, 
+#           {'z':obs_z[time_idxs], 'y':obs_y[time_idxs], 'x':obs_x[time_idxs]}, agl=False, wrap=True, coords='pres')
+
+        ens_obs = loadEnsemble("/caps2/tsupinie/1kmf-%s/" % exp_name, n_ensemble_members, [ time_sec ], (['u', 'v', 'pt', 'p', 'qv'], getObsData), { 'z':obs_z[time_idxs], 'y':obs_y[time_idxs], 'x':obs_x[time_idxs] }, agl=False, wrap=True, coords='pres')
+
+#       print ens_obs
 
         #
         # All subsequent lines do the verification
@@ -308,6 +313,9 @@ def main():
 
     def mean(L):
         return np.array(L).mean(axis=0)
+
+    if not os.path.exists("images-%s" % exp_name):
+        os.mkdir("images-%s" % exp_name, 0755)
 
     cPickle.dump(avg_crps_values, open("%s_crps.pkl" % exp_name, 'w'), -1)
     cPickle.dump(all_crps_values, open("%s_crps_breakdown.pkl" % exp_name, 'w'), -1)

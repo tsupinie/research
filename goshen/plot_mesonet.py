@@ -143,38 +143,22 @@ def main():
     ttu_sticknet_obs = cPickle.load(open("ttu_sticknet.pkl", 'r'))
     psu_straka_obs = cPickle.load(open("psu_straka_mesonet.pkl", 'r'))
 
-    all_obs = loadObs(['ttu_sticknet.pkl', 'psu_straka_mesonet.pkl'], [ _epoch_time + timedelta(seconds=(_initial_time + t)) for t in _target_times ],  map, (goshen_1km_proj['width'], goshen_1km_proj['height']), round_time=False)
+    all_obs = loadObs(['ttu_sticknet.pkl', 'psu_straka_mesonet.pkl'], [ _epoch_time + timedelta(seconds=(_initial_time + t)) for t in _target_times ],  map, (goshen_1km_proj['width'], goshen_1km_proj['height']), round_time=True)
+    print all_obs
 
-    partitioned_obs = gatherObservations(all_obs, [ _initial_time + t for t in _target_times ])
+#   partitioned_obs = gatherObservations(all_obs, [ _initial_time + t for t in _target_times ])
     for time, refl_time in zip([ _initial_time + t for t in _target_times], refl_keep_times):
         time_str = (_epoch_time + timedelta(seconds=time)).strftime("%d %B %Y %H%M UTC")
 
-        plot_obs = partitioned_obs[time]  #all_obs[np.where(all_obs['time'] == time)]
+        plot_obs = all_obs[np.where(all_obs['time'] == time)]
 
         inflow_idxs = np.where((plot_obs['wind_dir'] >= inflow_wd_lbound) & (plot_obs['wind_dir'] <= inflow_wd_ubound))[0]
         outflow_idxs = np.array([ idx for idx in range(plot_obs['id'].shape[0]) if idx not in inflow_idxs ])
-#       print "Time = %s" % time_str
-#       if len(inflow_idxs) > 0:
-#           print "  Inflow stations:", plot_obs[time]['id'][inflow_idxs]
-#       else:
-#           print "  Inflow stations: [None]"
-
-#       if len(outflow_idxs) > 0:
-#           print "  Outflow stations:", plot_obs[time]['id'][outflow_idxs]
-#       else:
-#           print "  Outflow stations: [None]"
-
-#       print time_str, obs['temp'], obs['dewp'], obs['wind_spd'], obs['wind_dir']
 
         title = "All MM observations at %s" % time_str
         file_name = "mm_obs_%06d.png" % (time - _initial_time)
 
         plotObservations(plot_obs, map, title, file_name, refl=refl_data[refl_time])
-
-#   keep_obs = isolateObsTimes(all_obs, [ _epoch_time + timedelta(seconds=(_initial_time + t)) for t in _target_times ])
-#   keep_obs.sort(order='time')
-
-#   keep_obs = thinObs(keep_obs, map, goshen_1km_proj['width'], goshen_1km_proj['height'])
     return
 
 if __name__ == "__main__":

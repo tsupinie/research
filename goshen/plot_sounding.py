@@ -34,7 +34,7 @@ def mixingRatio(vapor_pressure, pressure):
     return (epsilon * vapor_pressure) / (pressure - vapor_pressure)
 
 def moistAdiabaticLapseRate(temperature, pressure):
-    R_d = 278.
+    R_d = 287.
     R_v = 461.5
     c_p = 1003.5
     L = 2.5e6
@@ -46,7 +46,7 @@ def moistAdiabaticLapseRate(temperature, pressure):
     return ((1 + moist_term1) * temperature * R_d) / ((1 + moist_term2) * pressure * c_p)    
 
 def pseudoadiabaticLapseRate(temperature, pressure):
-    R_d = 278.
+    R_d = 287.
     epsilon = 0.622
     c_p = 1003.5
     L = 2.5e6

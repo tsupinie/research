@@ -307,6 +307,71 @@ void interpz(PyArrayObject* data, PyArrayObject* z_axis, float height, PyArrayOb
     return;
 }
 
+void interplayer(PyArrayObject* data, PyArrayObject* z_axis, float lbound, float ubound, PyArrayObject* interp_data, PyArrayObject* interp_z, bool wrap) {
+    float* data_values = NULL;
+    float* z_values = NULL;
+    float* interp_values = NULL;
+    float* interp_z_values = NULL;
+
+    float* temp_data_array = NULL;
+    float* temp_z_array = NULL;
+    float* temp_index_array = NULL;
+    int interp_index, interp_index_lb, interp_index_ub, interp_target_lb, interp_target_ub, data_index;
+
+    data_values = (float*)(data->data);
+    z_values = (float*)(z_axis->data);
+    interp_values = (float*)(interp_data->data);
+    interp_z_values = (float*)(interp_z->data);
+
+    temp_data_array = (float*)malloc(data->dimensions[0] * sizeof(float));
+    temp_z_array = (float*)malloc(z_axis->dimensions[0] * sizeof(float));
+    temp_index_array = (float*)malloc(z_axis->dimensions[0] * sizeof(float));
+
+    for (int kdz = 0; kdz < data->dimensions[0]; kdz++) {
+        temp_index_array[kdz] = float(kdz);
+    }
+
+    for (int jdy = 0; jdy < data->dimensions[1]; jdy++) {
+        for (int idx = 0; idx < data->dimensions[2]; idx++) {
+            for (int kdz = 0; kdz < data->dimensions[0]; kdz++) {
+                data_index = _unravel_index(data->dimensions, kdz, jdy, idx);
+                temp_data_array[kdz] = data_values[data_index];
+                temp_z_array[kdz] = z_values[data_index];
+            }
+
+            interp_target_lb = (int)floor(_interp1d(temp_z_array, temp_index_array, data->dimensions[0], lbound, true));
+            interp_target_ub = (int)ceil(_interp1d(temp_z_array, temp_index_array, data->dimensions[0], ubound, true));
+
+            printf("interp_target_lb = %d, interp_target_ub = %d\n", interp_target_lb, interp_target_ub);
+
+            interp_index_lb = _unravel_index(interp_data->dimensions, 0, jdy, idx);
+            interp_index_ub = _unravel_index(interp_data->dimensions, interp_target_ub - interp_target_lb, jdy, idx);
+
+            interp_values[interp_index_lb] = _interp1d(temp_z_array, temp_data_array, data->dimensions[0], lbound, wrap);
+            interp_z_values[interp_index_lb] = lbound;
+
+            for (int kdz = interp_index_lb + 1; kdz < interp_index_ub - 1; kdz++) {
+                data_index = _unravel_index(data->dimensions, kdz, jdy, idx);
+                interp_index = _unravel_index(data->dimensions, kdz - interp_index_lb, jdy, idx);
+                interp_values[interp_index] = data_values[data_index];
+                interp_z_values[interp_index] = temp_z_array[kdz];
+            }
+
+            interp_values[interp_index_ub] = _interp1d(temp_z_array, temp_data_array, data->dimensions[0], ubound, wrap);
+            interp_z_values[interp_index_ub] = ubound;
+        }
+    }
+   
+    free(temp_data_array);
+    free(temp_z_array);
+    free(temp_index_array);
+
+    temp_data_array = NULL;
+    temp_z_array = NULL;
+    temp_index_array = NULL;
+    return;
+}
+
 float _cone_height(float distance, float base_height, float elev_angle) {
     const double earth_radius = 6371000.;
     const double eff_factor = 4. / 3.;

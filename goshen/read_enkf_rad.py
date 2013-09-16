@@ -72,19 +72,19 @@ def plotRadTilt(plot_data, plot_cmaps, plot_titles, grid, file_name, base_ref=No
 
 def main():
 #   files = glob.glob("qc/manual/3km/KCYS.20090605.*")
-    files = glob.glob("KCYS.20090605.*")
+    files = glob.glob("qc/1km/KCYS.20090605.*")
 #   erf_88D = RadarObsFile("qc/manual/1km/KCYS.20090605.215744")
 #   domain_bounds = (slice(90, 160), slice(80, 150))
     domain_bounds = (slice(None), slice(None))
 
     radar_location = (41.56150, -104.298996)
 
-    proj = setupMapProjection(goshen_3km_proj, goshen_3km_gs, bounds=tuple(reversed(domain_bounds)))
+    proj = setupMapProjection(goshen_1km_proj, goshen_1km_gs, bounds=tuple(reversed(domain_bounds)))
     map = Basemap(**proj)
 
     radar_x, radar_y = map(*reversed(radar_location))
 
-    gs_x, gs_y = goshen_3km_gs
+    gs_x, gs_y = goshen_1km_gs
 
     plot_cmaps = [
         (matplotlib.cm.jet, 10, 80),
@@ -112,10 +112,10 @@ def main():
         ys -= ys[0, 0]
 
         plot_data = [ 
-            erf.reflectivity[domain_bounds],
-            erf.radial_velocity[domain_bounds],
-            erf.heights[domain_bounds],
-            erf.range[domain_bounds],
+            erf['Z'][(slice(None), ) + domain_bounds],
+            erf['vr'][(slice(None), ) + domain_bounds],
+            erf.heights[(slice(None), ) + domain_bounds],
+            erf.range[(slice(None), ) + domain_bounds],
         ]
 
         file_name_start = file.rfind("/") + 1
@@ -123,7 +123,7 @@ def main():
         time = file[-6:]
 
         for ntlt in [ 0 ]: #range(erf._n_tilts):
-            plotRadTilt([ p[:, :, ntlt] for p in plot_data ], plot_cmaps, plot_titles, (xs, ys, gs_x, gs_y, map), "%s_enkf_rad_%s.png" % (radar_id, time), base_ref=plot_data[0][:, :, 0])
+            plotRadTilt([ p[ntlt] for p in plot_data ], plot_cmaps, plot_titles, (xs, ys, gs_x, gs_y, map), "%s_enkf_rad_%s.png" % (radar_id, time), base_ref=plot_data[0][0])
     return
 
 if __name__ == "__main__":

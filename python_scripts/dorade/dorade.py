@@ -5,7 +5,7 @@ import copy
 
 import numpy as np
 
-from binfile import BinFile
+from .binfile import BinFile
 from compress import compressHRDpy, decompressHRDpy
 
 def _error(message):

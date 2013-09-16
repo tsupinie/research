@@ -34,7 +34,7 @@ def doMInnov(radar, model_path, obs_path, t_ens, base_time, analysis=True):
     return minnov_refl, minnov_vel
 
 def main():
-    model_paths = [ "/caps1/tsupinie/3km-fixed-radar/", "/caps2/tsupinie/3km-control/", "/caps2/tsupinie/3km-n0r=8e5/", "/caps2/tsupinie/3km-7dBZ,5ms/", "/caps1/tsupinie/3kmf-r0h=12km/" ]
+    model_paths = [ "/caps1/tsupinie/3km-fixed-radar/", "/caps2/tsupinie/3km-control/", "/caps2/tsupinie/3km-n0r=8e5/", "/caps2/tsupinie/3km-7dBZ,5ms/", "/caps1/tsupinie/3kmf-r0h=12km/", "/caps2/tsupinie/3kmf-pr0h=16km/", "/caps2/tsupinie/3kmf-r0h=18km/" ]
     obs_path = "/data6/tsupinie/goshen/qc/3km/"
     t_ens_start = 10800
     t_ens_stop = 18000

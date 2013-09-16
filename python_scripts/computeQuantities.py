@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.integrate import trapz
+from scipy.stats import nanmean
 
 def computeReflectivity(**kwargs):
     if 'method' in kwargs:
@@ -109,7 +111,80 @@ def computeVorticity(**kwargs):
 
     return dvdx - dudy
 
+def coordDerivative(data, coords, axis=0):
+    def cta(coord):
+        return tuple(([ slice(None) ] * axis) + [ coord ])
+
+    l_slc = slice(0, -2)
+    c_slc = slice(1, -1)
+    r_slc = slice(2,  None)
+
+    derivative = np.zeros(data.shape)
+    alpha = (coords[cta(r_slc)] - coords[cta(c_slc)]) / (coords[cta(c_slc)] - coords[cta(l_slc)])
+
+    derivative[cta(c_slc)] = (data[cta(r_slc)] + (alpha - 1) * data[cta(c_slc)] - alpha * data[cta(l_slc)]) / (2 * alpha * (coords[cta(c_slc)] - coords[cta(l_slc)]))
+    derivative[cta(0)] = (data[cta(1)] - data[cta(0)]) / (coords[cta(1)] - coords[cta(0)])
+    derivative[cta(-1)] = (data[cta(-1)] - data[cta(-2)]) / (coords[cta(-1)] - coords[cta(-2)])
+
+    return derivative
+
+def compute3DVorticity(**kwargs):
+    if 'vg_tensor' not in kwargs:
+        vg_tensor = computeVGTensor(**kwargs)
+    else:
+        vg_tensor = kwargs['vg_tensor']
+
+    vort3d = np.empty(vg_tensor.shape, dtype=[('zvort', np.float32), ('yvort', np.float32), ('xvort', np.float32)])
+
+    vort3d['zvort'] = vg_tensor['dvdx'] - vg_tensor['dudy']
+    vort3d['yvort'] = vg_tensor['dudz'] - vg_tensor['dwdx']
+    vort3d['xvort'] = vg_tensor['dwdy'] - vg_tensor['dvdz']
+    return vort3d
+
+def computeVGTensor(**kwargs):
+    dtype = []
+    for wc in ['u', 'v', 'w']:
+        for ax in ['x', 'y', 'z']:
+            dtype.append(("d%sd%s" % (wc, ax), np.float32))
+
+    vg_tensor = np.empty(kwargs['u'].shape, dtype=dtype)
+
+    nz, ny, nx = kwargs['z'].shape
+    kwargs['x'] = np.atleast_3d(kwargs['x']).reshape((1, 1, nx))
+    kwargs['y'] = np.atleast_3d(kwargs['y']).reshape((1, ny, 1))
+
+    for wc in ['u', 'v', 'w']:
+        for ax_no, ax in enumerate(['z', 'y', 'x']):
+            vg_tensor["d%sd%s" % (wc, ax)] = coordDerivative(kwargs[wc], kwargs[ax], axis=ax_no)
+    return vg_tensor
+
+def computeBuoyancy(**kwargs):
+    hydro_mass = kwargs['qc'] + kwargs['qi'] + kwargs['qr'] + kwargs['qs'] + kwargs['qh']
+    theta_rho = kwargs['pt'] * (1 + kwargs['qv'] / 0.622) / (1 + hydro_mass)
+    theta_rho_bar = nanmean(nanmean(theta_rho, axis=-1), axis=-1)[..., np.newaxis, np.newaxis]
+    p_bar = nanmean(nanmean(kwargs['p'], axis=-1), axis=-1)[..., np.newaxis, np.newaxis]    
+
+    return 9.806 * ((theta_rho - theta_rho_bar) / theta_rho_bar + (2. / 7. - 1) * (kwargs['p'] - p_bar) / p_bar)
+
+def computeBaroclinicVortGen(**kwargs):
+#   baroc_vort = np.empty(kwargs['pt'].shape, dtype=[('bvgx', np.float32), ('bvgy', np.float32)])
+
+    buoyancy = computeBuoyancy(**kwargs)
+
+    bvgx =  coordDerivative(buoyancy, kwargs['y'][:, np.newaxis], axis=0)
+    bvgy = -coordDerivative(buoyancy, kwargs['x'][np.newaxis, :], axis=1)
+
+    baroc_vort = (kwargs['u'] * bvgx + kwargs['v'] * bvgy) / np.hypot(kwargs['u'], kwargs['v'])
+    return baroc_vort
+
+def computeVH(**kwargs):
+    vert_vort = computeVorticity(**kwargs)
+    vert_hel = vert_vort * kwargs['w']
+
+    return vert_hel
+
 toRecArray = lambda **d: np.array(zip(*[ d[k].ravel() for k in sorted(d.keys()) ]), dtype=[ (k, float) for k in sorted(d.keys()) ]).reshape(d[d.keys()[0]].shape)
+toDict = lambda r: dict( (f, r[f]) for f in r.dtype.fields.iterkeys() )
 
 def theta2Temperature(**kwargs):
     pres = kwargs['p']
