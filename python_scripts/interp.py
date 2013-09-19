@@ -2,6 +2,8 @@
 import numpy as np
 import scipy.weave as weave
 
+_weave_path = "/data6/tsupinie/weave/"
+
 _interp_code = ""
 _lib_code = ""
 
@@ -207,12 +209,12 @@ def getInterpFunctions(axes, points, wrap=False, debug=False):
     global _lib_code
 
     if _interp_code == "":
-        _interp_code = open("interp.c", 'r').read()
+        _interp_code = open("%s/interp.c" % _weave_path, 'r').read()
         if debug:
             _interp_code = "#define INTERP_DEBUG\n%s" % _interp_code
 
     if _lib_code == "":
-        _lib_code = open("pylib.c").read()
+        _lib_code = open("%s/pylib.c" % _weave_path, 'r').read()
 
     if points is None:
         return _interpolateNone, _computeBoundsNone
