@@ -16,7 +16,6 @@ from collections import OrderedDict
 def main():
     base_path = "/caps2/tsupinie/"
     experiments = OrderedDict([('1kmf-sndr0h=25km', 'CTRL'), ('1kmf-zs25-no-05XP', 'NO_MWR'), ('1kmf-z-no-snd', 'NO_SND'), ('1kmf-zs25-no-mm', 'NO_MM'), ('1kmf-zs25-no-mm-05XP', 'NO_MWR_MM'), ('1kmf-z-no-v2', 'NO_V2')])
-#   experiments = OrderedDict([('1kmf-zs25-no-KCYSvr', 'NO_KCYS_VR'), ('1kmf-sndr0h=25km', 'CTRL'), ('1kmf-zs25-no-05XP', 'NO_MWR')])
 
     domain_bounds = (slice(110, 135), slice(118, 143))
     grid = goshen_1km_grid(bounds=domain_bounds)
@@ -41,11 +40,6 @@ def main():
             except:
                 mo = {'Z':np.zeros((1, 255, 255), dtype=np.float32)}
             refl.append(mo)
-
-#       if exp != "1kmf-zs25-no-KCYSvr":
-#           exp_vort.append(vort[:, 4:5])
-#       else:
-#           exp_vort.append(vort)
 
         exp_refl.append(np.array(refl))
 
@@ -75,7 +69,7 @@ def main():
 
         pylab.figure(figsize=(12, 8))
         pylab.subplots_adjust(left=0.05, bottom=0.1, right=0.875, top=0.975, hspace=0.1, wspace=0.1)
-        publicationFigure(subplots, (1, 3), corner='ur', colorbar=(r'Vorticity ($\times$ 10$^3$ s$^{-1}$)', "%d", levels, np.round(1000 * levels)))
+        publicationFigure(subplots, (2, 3), corner='ur', colorbar=(r'Vorticity ($\times$ 10$^3$ s$^{-1}$)', "%d", levels, np.round(1000 * levels)))
         pylab.savefig("vorticity_%d.png" % time_sec)
     return
 
