@@ -22,6 +22,7 @@ def main():
     base_path = "/caps2/tsupinie/"
     ap = argparse.ArgumentParser()
     ap.add_argument('--exp-name', dest='exp_name', required=True)
+    ap.add_argument('--fcst', dest='fcst', action='store_true')
 
     args = ap.parse_args()
 
@@ -34,10 +35,14 @@ def main():
     temp = goshen_1km_temporal(start=14400, end=14400)
     grid = goshen_1km_grid()
 
-    ens_vort = loadEnsemble(data_path, n_ens_members, temp.getTimes(), (['u', 'v', 'dx', 'dy'], getVortUV), {'z':1000}, agl=True, fcst=True)
+    ens_vort = loadEnsemble(data_path, n_ens_members, temp.getTimes(), (['u', 'v', 'dx', 'dy'], getVortUV), {'z':1000}, agl=True, fcst=args.fcst)
     
     print ens_vort.shape
-    cPickle.dump(ens_vort, open("vort_pkl/vorticity_fcst_%s.pkl" % exp_name, 'w'), -1)
+
+    fcst_str=""
+    if args.fcst: fcst_str = "_fcst"
+
+    cPickle.dump(ens_vort, open("vort_pkl/vorticity%s_%s.pkl" % (fcst_str, exp_name), 'w'), -1)
     return
 
 if __name__ == "__main__":
