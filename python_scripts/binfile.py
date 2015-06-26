@@ -33,7 +33,7 @@ class BinFile(object):
 
         if len(data) == 1:
             if type_string[-1] == 's':
-                return data[0].strip("\0")
+                return data[0].strip("\0").strip()
             else:
                 return data[0]
         else:
@@ -46,13 +46,32 @@ class BinFile(object):
         self._bin_file.write(struct.pack("%s%s" % (self._byteorder, type_string), *value))
         return
 
-    def _readGrid(self, type_string, shape):
-        length = reduce(mul, shape)
-        return np.array(self._read(type_string * length)).reshape(shape, order='F')
+    def _readGrid(self, type_string, shape, fortran=False):
+        if fortran:
+            block_size = self._read('i')
 
-    def _readBlock(self, type_dict, dest_dict):
+        length = reduce(mul, shape)
+        grid = np.array(self._read("%d%s" % (length, type_string))).reshape(shape, order='F')
+
+        if fortran:
+            self._read('i')
+
+        return grid
+
+    def _readBlock(self, type_dict, dest_dict, fortran=False):
+        if fortran:
+            block_size = self._read('i')
+            if block_size != self._computeBlockSize(type_dict):
+                raise IOError("readBlock(): Got an unexpected block.")
+
         for key, type in type_dict.iteritems():
-            dest_dict[key] = self._read(type)
+            data = self._read(type)
+            if key != '__dummy__':
+                dest_dict[key] = data
+
+        if fortran:
+            self._read('i')
+
         return
 
     def _writeBlock(self, type_dict, src_dict):
@@ -60,15 +79,19 @@ class BinFile(object):
             self._write(src_dict[key], type)
         return
 
+    def _computeBlockSize(self, type_dict):
+        return struct.calcsize("".join(type_dict.values()))
+
     def _peek(self, type_string):
         return self._read(type_string, _peeking=True)
 
     def _seek(self, location, anchor=0):
         self._bin_file.seek(location, anchor)
+        self._file_pos = self._bin_file.tell()
         return
 
     def _tell(self):
-        return self._bin_file.tell()
+        return self._file_pos #self._bin_file.tell()
 
     def _ateof(self):
         return self._bin_file.read(1) == ""
